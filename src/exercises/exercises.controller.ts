@@ -13,11 +13,15 @@ export class ExercisesController {
 
   @Post()
   addExercise(
-    @Body() payload: { name: string; muscleGroup?: string },
+    @Body()
+    payload: Omit<Exercise, 'id'>,
   ): Promise<Exercise> {
     return this.exercisesService.create({
       name: payload.name,
-      muscleGroup: payload.muscleGroup,
+      level: payload.level,
+      type: payload.type,
+      imageUrl: payload.imageUrl,
+      isHazardous: payload.isHazardous,
     });
   }
 }
