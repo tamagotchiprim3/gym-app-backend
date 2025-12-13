@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post } from '@nestjs/common';
 import { Exercise } from './entities/exercise.entity';
 import { ExercisesService } from './exercises.service';
 
@@ -23,5 +23,10 @@ export class ExercisesController {
       imageUrl: payload.imageUrl,
       isHazardous: payload.isHazardous,
     });
+  }
+
+  @Delete(':id')
+  removeExercise(@Param('id', ParseIntPipe) id: number) {
+    return this.exercisesService.remove(id);
   }
 }

@@ -18,4 +18,8 @@ export class ExercisesService {
     const exercise = this.exerciseRepository.create(data);
     return this.exerciseRepository.save(exercise);
   }
+
+  remove(id: number) {
+    return this.exerciseRepository.delete(id);
+  }
 }
