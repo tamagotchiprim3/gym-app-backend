@@ -1,6 +1,7 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { ExerciseType } from '../interfaces/execise-type';
 import { ExerciseLevel } from '../interfaces/exercise-level';
+import { MuscleGroup } from '../interfaces/muscle-group';
 
 @Entity()
 export class Exercise {
@@ -15,6 +16,9 @@ export class Exercise {
 
   @Column({ type: 'enum', enum: ExerciseType, nullable: true })
   type?: ExerciseType;
+
+  @Column({ type: 'enum', enum: MuscleGroup, default: MuscleGroup.Other })
+  muscleGroup: MuscleGroup;
 
   @Column()
   imageUrl: string;

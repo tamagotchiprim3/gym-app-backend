@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { GymExperienceLevel } from '../users/types/gym-experience-level';
 import { Weekday } from '../users/types/weekday';
+import { TrainingMode } from '../users/types/training-mode';
 
 jest.mock('bcrypt', () => ({
   hash: jest.fn(async () => 'hashed'),
@@ -34,7 +35,9 @@ describe('AuthService', () => {
       passwordHash: 'hashed',
       repRangeMin: 6,
       repRangeMax: 12,
-      setsPerWeek: 12,
+      setsPerGroupPerWeek: 12,
+      trainingMode: TrainingMode.FullBody,
+      exercisesPerGroupPerWorkout: 1,
       trainingDays: [Weekday.Mon],
     });
   });
@@ -52,7 +55,9 @@ describe('AuthService', () => {
         gymExperienceLevel: GymExperienceLevel.Beginner,
         repRangeMin: 6,
         repRangeMax: 12,
-        setsPerWeek: 12,
+        setsPerGroupPerWeek: 12,
+        trainingMode: TrainingMode.FullBody,
+        exercisesPerGroupPerWorkout: 1,
         exerciseIds: [1],
       } as any),
     ).rejects.toBeInstanceOf(BadRequestException);
@@ -73,7 +78,9 @@ describe('AuthService', () => {
         gymExperienceLevel: GymExperienceLevel.Beginner,
         repRangeMin: 6,
         repRangeMax: 12,
-        setsPerWeek: 12,
+        setsPerGroupPerWeek: 12,
+        trainingMode: TrainingMode.FullBody,
+        exercisesPerGroupPerWorkout: 1,
         exerciseIds: [1],
         trainingDays: [],
       }),
@@ -95,7 +102,9 @@ describe('AuthService', () => {
         gymExperienceLevel: GymExperienceLevel.Beginner,
         repRangeMin: 6,
         repRangeMax: 12,
-        setsPerWeek: 12,
+        setsPerGroupPerWeek: 12,
+        trainingMode: TrainingMode.FullBody,
+        exercisesPerGroupPerWorkout: 1,
         exerciseIds: [1],
         trainingDays: ['monday'] as any,
       }),
@@ -117,7 +126,9 @@ describe('AuthService', () => {
         gymExperienceLevel: 'expert' as any,
         repRangeMin: 6,
         repRangeMax: 12,
-        setsPerWeek: 12,
+        setsPerGroupPerWeek: 12,
+        trainingMode: TrainingMode.FullBody,
+        exercisesPerGroupPerWorkout: 1,
         exerciseIds: [1],
         trainingDays: ['mon'],
       }),
@@ -139,7 +150,9 @@ describe('AuthService', () => {
         gymExperienceLevel: GymExperienceLevel.Beginner,
         repRangeMin: 12,
         repRangeMax: 6,
-        setsPerWeek: 12,
+        setsPerGroupPerWeek: 12,
+        trainingMode: TrainingMode.FullBody,
+        exercisesPerGroupPerWorkout: 1,
         exerciseIds: [1],
         trainingDays: ['mon'],
       }),
@@ -148,7 +161,7 @@ describe('AuthService', () => {
     expect(bcrypt.hash).not.toHaveBeenCalled();
   });
 
-  it('rejects when setsPerWeek is invalid', async () => {
+  it('rejects when setsPerGroupPerWeek is invalid', async () => {
     await expect(
       service.register({
         email: 'test@example.com',
@@ -161,7 +174,9 @@ describe('AuthService', () => {
         gymExperienceLevel: GymExperienceLevel.Beginner,
         repRangeMin: 6,
         repRangeMax: 12,
-        setsPerWeek: 0,
+        setsPerGroupPerWeek: 0,
+        trainingMode: TrainingMode.FullBody,
+        exercisesPerGroupPerWorkout: 1,
         exerciseIds: [1],
         trainingDays: ['mon'],
       }),

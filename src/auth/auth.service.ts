@@ -9,6 +9,8 @@ import { UsersService } from '../users/users.service';
 import { User } from '../users/entities/user.entity';
 import { Weekday } from '../users/types/weekday';
 import { GymExperienceLevel } from '../users/types/gym-experience-level';
+import { TrainingMode } from '../users/types/training-mode';
+import { MuscleGroup } from '../exercises/interfaces/muscle-group';
 
 interface JwtPayload {
   sub: number;
@@ -35,7 +37,10 @@ export class AuthService {
     gymExperienceLevel: GymExperienceLevel;
     repRangeMin: number;
     repRangeMax: number;
-    setsPerWeek: number;
+    setsPerGroupPerWeek: number;
+    trainingMode: TrainingMode;
+    exercisesPerGroupPerWorkout: number;
+    splitDays?: Partial<Record<Weekday, MuscleGroup[]>>;
     exerciseIds: number[];
     trainingDays: Weekday[];
   }) {
@@ -80,13 +85,31 @@ export class AuthService {
       throw new BadRequestException('repRangeMin must be <= repRangeMax');
     }
 
-    const setsPerWeek = Number(params.setsPerWeek);
+    const setsPerGroupPerWeek = Number(params.setsPerGroupPerWeek);
     if (
-      !Number.isInteger(setsPerWeek) ||
-      setsPerWeek < 1 ||
-      setsPerWeek > 1000
+      !Number.isInteger(setsPerGroupPerWeek) ||
+      setsPerGroupPerWeek < 1 ||
+      setsPerGroupPerWeek > 1000
     ) {
-      throw new BadRequestException('Invalid setsPerWeek');
+      throw new BadRequestException('Invalid setsPerGroupPerWeek');
+    }
+
+    if (
+      params.trainingMode !== TrainingMode.FullBody &&
+      params.trainingMode !== TrainingMode.Split
+    ) {
+      throw new BadRequestException('Invalid trainingMode');
+    }
+
+    const exercisesPerGroupPerWorkout = Number(
+      params.exercisesPerGroupPerWorkout,
+    );
+    if (
+      !Number.isInteger(exercisesPerGroupPerWorkout) ||
+      exercisesPerGroupPerWorkout < 1 ||
+      exercisesPerGroupPerWorkout > 10
+    ) {
+      throw new BadRequestException('Invalid exercisesPerGroupPerWorkout');
     }
 
     if (!Array.isArray(params.trainingDays)) {
@@ -100,6 +123,22 @@ export class AuthService {
     const allowedDays = new Set(Object.values(Weekday));
     if (params.trainingDays.some((day) => !allowedDays.has(day))) {
       throw new BadRequestException('Invalid trainingDays');
+    }
+
+    if (params.trainingMode === TrainingMode.Split) {
+      if (!params.splitDays || typeof params.splitDays !== 'object') {
+        throw new BadRequestException('splitDays is required');
+      }
+      const allowedGroups = new Set(Object.values(MuscleGroup));
+      for (const day of params.trainingDays) {
+        const groups = (params.splitDays as any)[day];
+        if (!Array.isArray(groups) || groups.length === 0) {
+          throw new BadRequestException(`splitDays.${day} is required`);
+        }
+        if (groups.some((g: any) => !allowedGroups.has(g))) {
+          throw new BadRequestException(`Invalid splitDays.${day}`);
+        }
+      }
     }
 
     const passwordHash = await bcrypt.hash(params.password, 10);
@@ -116,7 +155,13 @@ export class AuthService {
         gymExperienceLevel: params.gymExperienceLevel,
         repRangeMin,
         repRangeMax,
-        setsPerWeek,
+        setsPerGroupPerWeek,
+        trainingMode: params.trainingMode,
+        exercisesPerGroupPerWorkout,
+        splitDays:
+          params.trainingMode === TrainingMode.Split
+            ? params.splitDays
+            : undefined,
         trainingDays: Array.from(new Set(params.trainingDays)),
       },
       params.exerciseIds,

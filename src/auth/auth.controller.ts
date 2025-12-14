@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { UserRole } from '../users/types/user-role';
 import { Weekday } from '../users/types/weekday';
 import { GymExperienceLevel } from '../users/types/gym-experience-level';
+import { TrainingMode } from '../users/types/training-mode';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
@@ -24,7 +25,10 @@ export class AuthController {
       gymExperienceLevel: GymExperienceLevel;
       repRangeMin: number;
       repRangeMax: number;
-      setsPerWeek: number;
+      setsPerGroupPerWeek: number;
+      trainingMode: TrainingMode;
+      exercisesPerGroupPerWorkout: number;
+      splitDays?: any;
       exerciseIds: number[];
       trainingDays: Weekday[];
     },

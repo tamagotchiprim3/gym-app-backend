@@ -12,6 +12,8 @@ import { Exercise } from '../../exercises/entities/exercise.entity';
 import { UserRole } from '../types/user-role';
 import { Weekday } from '../types/weekday';
 import { GymExperienceLevel } from '../types/gym-experience-level';
+import { TrainingMode } from '../types/training-mode';
+import { MuscleGroup } from '../../exercises/interfaces/muscle-group';
 
 @Entity()
 export class User {
@@ -53,10 +55,19 @@ export class User {
   repRangeMax: number;
 
   @Column({ type: 'int', name: 'workingSetsPerGroupPerWeek' })
-  setsPerWeek: number;
+  setsPerGroupPerWeek: number;
 
   @Column({ type: 'simple-array' })
   trainingDays: Weekday[];
+
+  @Column({ type: 'enum', enum: TrainingMode })
+  trainingMode: TrainingMode;
+
+  @Column({ type: 'int' })
+  exercisesPerGroupPerWorkout: number;
+
+  @Column({ type: 'json', nullable: true })
+  splitDays?: Partial<Record<Weekday, MuscleGroup[]>>;
 
   @ManyToMany(() => Exercise, { cascade: false })
   @JoinTable({

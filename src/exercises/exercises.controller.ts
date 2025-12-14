@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post } from '@nestjs/common';
 import { Exercise } from './entities/exercise.entity';
 import { ExercisesService } from './exercises.service';
+import { MuscleGroup } from './interfaces/muscle-group';
 
 @Controller('exercises')
 export class ExercisesController {
@@ -20,6 +21,7 @@ export class ExercisesController {
       name: payload.name,
       level: payload.level,
       type: payload.type,
+      muscleGroup: payload.muscleGroup ?? MuscleGroup.Other,
       imageUrl: payload.imageUrl,
       isHazardous: payload.isHazardous,
     });

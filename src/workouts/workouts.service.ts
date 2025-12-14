@@ -1,0 +1,446 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { UsersService } from '../users/users.service';
+import { User } from '../users/entities/user.entity';
+import { WorkoutSession } from './entities/workout-session.entity';
+import { WorkoutSet } from './entities/workout-set.entity';
+import { UserWorkingWeight } from './entities/user-working-weight.entity';
+import { UserScheduleState } from './entities/user-schedule-state.entity';
+import {
+  computeNextWorkoutAt,
+  computeSetsForWorkoutIndex,
+  distributeInteger,
+  getWeekStartIsoDateMonday,
+} from './workouts.utils';
+import { WorkoutKind } from './types/workout-kind';
+import { WorkoutStatus } from './types/workout-status';
+import { WorkoutSetType } from './types/workout-set-type';
+import { MuscleGroup } from '../exercises/interfaces/muscle-group';
+import { TrainingMode } from '../users/types/training-mode';
+
+@Injectable()
+export class WorkoutsService {
+  constructor(
+    @InjectRepository(WorkoutSession)
+    private readonly sessionsRepository: Repository<WorkoutSession>,
+    @InjectRepository(WorkoutSet)
+    private readonly setsRepository: Repository<WorkoutSet>,
+    @InjectRepository(UserWorkingWeight)
+    private readonly workingWeightsRepository: Repository<UserWorkingWeight>,
+    @InjectRepository(UserScheduleState)
+    private readonly scheduleRepository: Repository<UserScheduleState>,
+    private readonly usersService: UsersService,
+  ) {}
+
+  async startInit(currentUser: User) {
+    const user = await this.usersService.findById(currentUser.id);
+    if (!user) throw new NotFoundException('User not found');
+    if (!user.exercises?.length) {
+      throw new BadRequestException('User has no exercises');
+    }
+
+    const weights = await this.workingWeightsRepository.find({
+      where: { user: { id: user.id } },
+      relations: { exercise: true },
+    });
+    const weightByExerciseId = new Map(weights.map((w) => [w.exercise.id, w]));
+
+    const missing = user.exercises.filter((e) => !weightByExerciseId.has(e.id));
+    if (!missing.length) {
+      throw new BadRequestException('Working weights already initialized');
+    }
+
+    const byGroup = new Map<MuscleGroup, typeof missing>();
+    for (const ex of missing) {
+      const group = ex.muscleGroup ?? MuscleGroup.Other;
+      const arr = byGroup.get(group) ?? [];
+      arr.push(ex);
+      byGroup.set(group, arr);
+    }
+
+    const plannedExerciseIds: number[] = [];
+    const plannedMuscleGroups: MuscleGroup[] = [];
+    const perGroup = user.exercisesPerGroupPerWorkout ?? 1;
+    for (const [group, exercises] of byGroup.entries()) {
+      plannedMuscleGroups.push(group);
+      exercises.sort((a, b) => a.id - b.id);
+      plannedExerciseIds.push(...exercises.slice(0, perGroup).map((e) => e.id));
+    }
+
+    const session = await this.sessionsRepository.save(
+      this.sessionsRepository.create({
+        user: { id: user.id } as User,
+        kind: WorkoutKind.Init,
+        status: WorkoutStatus.InProgress,
+        plannedExerciseIds,
+        plannedMuscleGroups,
+      }),
+    );
+
+    const selectedExercises = user.exercises.filter((e) =>
+      plannedExerciseIds.includes(e.id),
+    );
+
+    return {
+      sessionId: session.id,
+      kind: session.kind,
+      repRangeMin: user.repRangeMin,
+      repRangeMax: user.repRangeMax,
+      exercises: selectedExercises.map((e) => ({
+        id: e.id,
+        name: e.name,
+        muscleGroup: e.muscleGroup ?? MuscleGroup.Other,
+        hasWorkingWeight: weightByExerciseId.has(e.id),
+        workingWeightKg: weightByExerciseId.get(e.id)?.workingWeightKg ?? null,
+      })),
+      totalExercises: plannedExerciseIds.length,
+      remainingExercisesToInit: missing.length,
+      remainingByMuscleGroup: Array.from(byGroup.entries()).map(
+        ([muscleGroup, exercises]) => ({
+          muscleGroup,
+          remaining: exercises.length,
+        }),
+      ),
+    };
+  }
+
+  async startRegular(currentUser: User) {
+    const user = await this.usersService.findById(currentUser.id);
+    if (!user) throw new NotFoundException('User not found');
+    if (!user.exercises?.length) {
+      throw new BadRequestException('User has no exercises');
+    }
+    if (!user.trainingDays?.length) {
+      throw new BadRequestException('User has no trainingDays');
+    }
+
+    const now = new Date();
+    const weekStartDate = getWeekStartIsoDateMonday(now);
+    let schedule = await this.scheduleRepository.findOne({
+      where: { user: { id: user.id } },
+      relations: { user: true },
+    });
+
+    if (!schedule) {
+      schedule = this.scheduleRepository.create({
+        user: { id: user.id } as User,
+        weekStartDate,
+        workoutsCompletedThisWeek: 0,
+      });
+    } else if (schedule.weekStartDate !== weekStartDate) {
+      schedule.weekStartDate = weekStartDate;
+      schedule.workoutsCompletedThisWeek = 0;
+    }
+
+    const workoutIndex =
+      schedule.workoutsCompletedThisWeek % user.trainingDays.length;
+    const plannedTrainingDay = user.trainingDays[workoutIndex];
+    const plannedWorkingSetsPerGroup = computeSetsForWorkoutIndex(
+      user.setsPerGroupPerWeek,
+      user.trainingDays.length,
+      workoutIndex,
+    );
+
+    const exercisesByGroup = new Map<MuscleGroup, typeof user.exercises>();
+    for (const ex of user.exercises) {
+      const group = ex.muscleGroup ?? MuscleGroup.Other;
+      const arr = exercisesByGroup.get(group) ?? [];
+      arr.push(ex);
+      exercisesByGroup.set(group, arr);
+    }
+
+    let muscleGroupsForWorkout: MuscleGroup[];
+    if (user.trainingMode === TrainingMode.FullBody) {
+      muscleGroupsForWorkout = Array.from(exercisesByGroup.keys());
+    } else if (user.trainingMode === TrainingMode.Split) {
+      const groups = (user.splitDays as any)?.[plannedTrainingDay];
+      if (!Array.isArray(groups) || groups.length === 0) {
+        throw new BadRequestException(`splitDays.${plannedTrainingDay} is required`);
+      }
+      muscleGroupsForWorkout = groups;
+    } else {
+      throw new BadRequestException('Invalid trainingMode');
+    }
+
+    const groupRotation = schedule.groupRotation ?? {};
+    const exercisesPerGroupPerWorkout = user.exercisesPerGroupPerWorkout ?? 1;
+
+    const plannedExercises: Array<{
+      id: number;
+      name: string;
+      muscleGroup: MuscleGroup;
+      plannedWorkingSets: number;
+    }> = [];
+    const plannedExerciseIds: number[] = [];
+
+    for (const muscleGroup of muscleGroupsForWorkout) {
+      const groupExercises = (exercisesByGroup.get(muscleGroup) ?? []).slice();
+      if (!groupExercises.length) continue;
+
+      groupExercises.sort((a, b) => a.id - b.id);
+      const rotationIndex = Number((groupRotation as any)[muscleGroup] ?? 0);
+      const takeCount = Math.min(exercisesPerGroupPerWorkout, groupExercises.length);
+
+      const selected = Array.from({ length: takeCount }, (_, i) => {
+        const idx = (rotationIndex + i) % groupExercises.length;
+        return groupExercises[idx];
+      });
+
+      const perExerciseSets = distributeInteger(plannedWorkingSetsPerGroup, takeCount);
+      selected.forEach((ex, i) => {
+        plannedExercises.push({
+          id: ex.id,
+          name: ex.name,
+          muscleGroup,
+          plannedWorkingSets: perExerciseSets[i],
+        });
+        plannedExerciseIds.push(ex.id);
+      });
+    }
+
+    if (!plannedExercises.length) {
+      throw new BadRequestException('No exercises selected for workout');
+    }
+
+    const plannedWorkingSetsTotal = plannedExercises.reduce(
+      (sum, e) => sum + e.plannedWorkingSets,
+      0,
+    );
+
+    schedule = await this.scheduleRepository.save(schedule);
+
+    const session = await this.sessionsRepository.save(
+      this.sessionsRepository.create({
+        user: { id: user.id } as User,
+        kind: WorkoutKind.Regular,
+        status: WorkoutStatus.InProgress,
+        plannedTrainingDay,
+        plannedWorkingSetsPerGroup,
+        plannedWorkingSetsTotal,
+        plannedExerciseIds,
+        plannedMuscleGroups: muscleGroupsForWorkout,
+      }),
+    );
+
+    const weights = await this.workingWeightsRepository.find({
+      where: { user: { id: user.id } },
+      relations: { exercise: true },
+    });
+    const weightByExerciseId = new Map(weights.map((w) => [w.exercise.id, w]));
+
+    return {
+      sessionId: session.id,
+      kind: session.kind,
+      plannedTrainingDay,
+      plannedWorkingSetsPerGroup,
+      plannedWorkingSetsTotal,
+      repRangeMin: user.repRangeMin,
+      repRangeMax: user.repRangeMax,
+      exercises: plannedExercises.map((e) => ({
+        ...e,
+        workingWeightKg: weightByExerciseId.get(e.id)?.workingWeightKg ?? null,
+      })),
+      schedule: {
+        weekStartDate: schedule.weekStartDate,
+        workoutsCompletedThisWeek: schedule.workoutsCompletedThisWeek,
+        nextWorkoutAt: schedule.nextWorkoutAt ?? null,
+      },
+    };
+  }
+
+  async addSet(
+    currentUser: User,
+    sessionId: number,
+    params: {
+      exerciseId: number;
+      setType: WorkoutSetType;
+      repsDone: number;
+      weightKg?: number;
+    },
+  ) {
+    const user = await this.usersService.findById(currentUser.id);
+    if (!user) throw new NotFoundException('User not found');
+
+    const session = await this.sessionsRepository.findOne({
+      where: { id: sessionId },
+      relations: { user: true },
+    });
+    if (!session) throw new NotFoundException('Session not found');
+    if (session.user.id !== user.id) throw new ForbiddenException();
+    if (session.status !== WorkoutStatus.InProgress) {
+      throw new BadRequestException('Session is not in progress');
+    }
+
+    const exerciseId = Number(params.exerciseId);
+    if (!Number.isInteger(exerciseId)) {
+      throw new BadRequestException('Invalid exerciseId');
+    }
+    const userExerciseIds = new Set((user.exercises ?? []).map((e) => e.id));
+    if (!userExerciseIds.has(exerciseId)) {
+      throw new ForbiddenException('Exercise does not belong to user');
+    }
+
+    const repsDone = Number(params.repsDone);
+    if (!Number.isInteger(repsDone) || repsDone < 1 || repsDone > 500) {
+      throw new BadRequestException('Invalid repsDone');
+    }
+
+    let weightKg: number;
+    if (params.setType === WorkoutSetType.Working) {
+      const workingWeight = await this.workingWeightsRepository.findOne({
+        where: {
+          user: { id: user.id },
+          exercise: { id: exerciseId },
+        },
+        relations: { exercise: true },
+      });
+      if (!workingWeight) {
+        throw new BadRequestException('Working weight is not initialized');
+      }
+      weightKg = workingWeight.workingWeightKg;
+    } else {
+      const parsed = Number(params.weightKg);
+      if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 2000) {
+        throw new BadRequestException('Invalid weightKg');
+      }
+      weightKg = parsed;
+    }
+
+    const set = await this.setsRepository.save(
+      this.setsRepository.create({
+        session: { id: session.id } as WorkoutSession,
+        user: { id: user.id } as User,
+        exercise: { id: exerciseId } as any,
+        setType: params.setType,
+        weightKg,
+        repsDone,
+      }),
+    );
+
+    let status: 'saved' | 'in_range' | 'too_light' | 'too_heavy' = 'saved';
+    if (params.setType === WorkoutSetType.InitAttempt) {
+      if (repsDone < user.repRangeMin) status = 'too_heavy';
+      else if (repsDone > user.repRangeMax) status = 'too_light';
+      else status = 'in_range';
+
+      if (status === 'in_range') {
+        const existing = await this.workingWeightsRepository.findOne({
+          where: {
+            user: { id: user.id },
+            exercise: { id: exerciseId },
+          },
+        });
+        await this.workingWeightsRepository.save(
+          this.workingWeightsRepository.create({
+            ...(existing ? { id: existing.id } : null),
+            user: { id: user.id } as User,
+            exercise: { id: exerciseId } as any,
+            workingWeightKg: weightKg,
+            repsDone,
+          }),
+        );
+      }
+    }
+
+    return {
+      setId: set.id,
+      sessionId: session.id,
+      exerciseId,
+      setType: set.setType,
+      weightKg: set.weightKg,
+      repsDone: set.repsDone,
+      status,
+    };
+  }
+
+  async finish(currentUser: User, sessionId: number) {
+    const user = await this.usersService.findById(currentUser.id);
+    if (!user) throw new NotFoundException('User not found');
+
+    const session = await this.sessionsRepository.findOne({
+      where: { id: sessionId },
+      relations: { user: true },
+    });
+    if (!session) throw new NotFoundException('Session not found');
+    if (session.user.id !== user.id) throw new ForbiddenException();
+    if (session.status !== WorkoutStatus.InProgress) {
+      throw new BadRequestException('Session is not in progress');
+    }
+
+    if (session.kind === WorkoutKind.Init) {
+      const plannedExerciseIds = session.plannedExerciseIds ?? [];
+      if (!plannedExerciseIds.length) {
+        throw new BadRequestException('Init session has no planned exercises');
+      }
+      const weights = await this.workingWeightsRepository.find({
+        where: { user: { id: user.id } },
+        relations: { exercise: true },
+      });
+      const found = new Set(weights.map((w) => w.exercise.id));
+      const missing = plannedExerciseIds.filter((id) => !found.has(id));
+      if (missing.length) {
+        throw new BadRequestException(
+          'Working weight is missing for some exercises',
+        );
+      }
+    }
+
+    if (session.kind === WorkoutKind.Regular) {
+      const now = new Date();
+      const weekStartDate = getWeekStartIsoDateMonday(now);
+      let schedule = await this.scheduleRepository.findOne({
+        where: { user: { id: user.id } },
+        relations: { user: true },
+      });
+      if (!schedule) {
+        schedule = this.scheduleRepository.create({
+          user: { id: user.id } as User,
+          weekStartDate,
+          workoutsCompletedThisWeek: 0,
+        });
+      } else if (schedule.weekStartDate !== weekStartDate) {
+        schedule.weekStartDate = weekStartDate;
+        schedule.workoutsCompletedThisWeek = 0;
+      }
+      schedule.workoutsCompletedThisWeek += 1;
+      schedule.nextWorkoutAt = computeNextWorkoutAt(now, user.trainingDays);
+      const rotation = schedule.groupRotation ?? {};
+      const plannedGroups = session.plannedMuscleGroups ?? [];
+      const exercisesPerGroupPerWorkout = user.exercisesPerGroupPerWorkout ?? 1;
+
+      const exercisesByGroup = new Map<MuscleGroup, typeof user.exercises>();
+      for (const ex of user.exercises ?? []) {
+        const group = ex.muscleGroup ?? MuscleGroup.Other;
+        const arr = exercisesByGroup.get(group) ?? [];
+        arr.push(ex);
+        exercisesByGroup.set(group, arr);
+      }
+
+      for (const group of plannedGroups) {
+        const total = exercisesByGroup.get(group)?.length ?? 0;
+        if (total <= 1) continue;
+        const current = Number((rotation as any)[group] ?? 0);
+        const advance = Math.min(exercisesPerGroupPerWorkout, total);
+        (rotation as any)[group] = (current + advance) % total;
+      }
+      schedule.groupRotation = rotation;
+      await this.scheduleRepository.save(schedule);
+    }
+
+    session.status = WorkoutStatus.Finished;
+    session.finishedAt = new Date();
+    await this.sessionsRepository.save(session);
+
+    return {
+      sessionId: session.id,
+      status: session.status,
+      finishedAt: session.finishedAt,
+    };
+  }
+}
