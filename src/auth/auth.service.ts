@@ -24,8 +24,9 @@ export class AuthService {
   async register(params: {
     email: string;
     password: string;
-    name?: string;
+    name: string;
     role?: User['role'];
+    exerciseIds: number[];
   }) {
     const existing = await this.usersService.findByEmail(params.email);
     if (existing) {
@@ -33,12 +34,15 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(params.password, 10);
-    const user = await this.usersService.create({
-      email: params.email,
-      passwordHash,
-      name: params.name,
-      role: params.role,
-    });
+    const user = await this.usersService.createWithExerciseIds(
+      {
+        email: params.email,
+        passwordHash,
+        name: params.name,
+        role: params.role,
+      },
+      params.exerciseIds,
+    );
 
     const accessToken = this.signToken(user);
     return { user: this.stripSensitive(user), accessToken };

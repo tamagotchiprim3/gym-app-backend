@@ -13,8 +13,9 @@ export class AuthController {
     payload: {
       email: string;
       password: string;
-      name?: string;
+      name: string;
       role?: UserRole;
+      exerciseIds: number[];
     },
   ) {
     return this.authService.register(payload);
