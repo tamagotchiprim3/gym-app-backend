@@ -1,5 +1,7 @@
 import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
-import { UserRole } from '../users/entities/user.entity';
+import { UserRole } from '../users/types/user-role';
+import { Weekday } from '../users/types/weekday';
+import { GymExperienceLevel } from '../users/types/gym-experience-level';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
@@ -13,9 +15,18 @@ export class AuthController {
     payload: {
       email: string;
       password: string;
-      name: string;
+      firstName: string;
+      lastName: string;
       role?: UserRole;
+      age: number;
+      heightCm: number;
+      weightKg: number;
+      gymExperienceLevel: GymExperienceLevel;
+      repRangeMin: number;
+      repRangeMax: number;
+      setsPerWeek: number;
       exerciseIds: number[];
+      trainingDays: Weekday[];
     },
   ) {
     return this.authService.register(payload);

@@ -1,0 +1,142 @@
+[
+  {
+    "name": "Приседания со штангой на спине",
+    "level": "beginner",
+    "type": "strength",
+    "imageUrl": "https://example.com/images/back-squat.jpg",
+    "isHazardous": false
+  },
+  {
+    "name": "Жим штанги лёжа",
+    "level": "beginner",
+    "type": "strength",
+    "imageUrl": "https://example.com/images/bench-press.jpg",
+    "isHazardous": false
+  },
+  {
+    "name": "Становая тяга классическая",
+    "level": "intermediate",
+    "type": "strength",
+    "imageUrl": "https://example.com/images/deadlift.jpg",
+    "isHazardous": true
+  },
+  {
+    "name": "Жим штанги стоя (армейский жим)",
+    "level": "beginner",
+    "type": "strength",
+    "imageUrl": "https://example.com/images/overhead-press.jpg",
+    "isHazardous": false
+  },
+  {
+    "name": "Подтягивания",
+    "level": "intermediate",
+    "type": "strength",
+    "imageUrl": "https://example.com/images/pull-up.jpg",
+    "isHazardous": false
+  },
+  {
+    "name": "Тяга штанги в наклоне",
+    "level": "intermediate",
+    "type": "strength",
+    "imageUrl": "https://example.com/images/barbell-row.jpg",
+    "isHazardous": false
+  },
+  {
+    "name": "Тяга верхнего блока к груди",
+    "level": "beginner",
+    "type": "strength",
+    "imageUrl": "https://example.com/images/lat-pulldown.jpg",
+    "isHazardous": false
+  },
+  {
+    "name": "Жим гантелей на наклонной скамье",
+    "level": "beginner",
+    "type": "strength",
+    "imageUrl": "https://example.com/images/incline-db-press.jpg",
+    "isHazardous": false
+  },
+  {
+    "name": "Разгибания рук на блоке (трицепс)",
+    "level": "beginner",
+    "type": "strength",
+    "imageUrl": "https://example.com/images/triceps-pushdown.jpg",
+    "isHazardous": false
+  },
+  {
+    "name": "Сгибания рук со штангой (бицепс)",
+    "level": "beginner",
+    "type": "strength",
+    "imageUrl": "https://example.com/images/barbell-curl.jpg",
+    "isHazardous": false
+  },
+  {
+    "name": "Жим ногами в тренажёре",
+    "level": "beginner",
+    "type": "strength",
+    "imageUrl": "https://example.com/images/leg-press.jpg",
+    "isHazardous": false
+  },
+  {
+    "name": "Румынская тяга",
+    "level": "intermediate",
+    "type": "strength",
+    "imageUrl": "https://example.com/images/rdl.jpg",
+    "isHazardous": true
+  },
+  {
+    "name": "Разгибания ног в тренажёре",
+    "level": "beginner",
+    "type": "strength",
+    "imageUrl": "https://example.com/images/leg-extension.jpg",
+    "isHazardous": false
+  },
+  {
+    "name": "Сгибания ног в тренажёре",
+    "level": "beginner",
+    "type": "strength",
+    "imageUrl": "https://example.com/images/leg-curl.jpg",
+    "isHazardous": false
+  },
+  {
+    "name": "Бег на беговой дорожке",
+    "level": "beginner",
+    "type": "cardio",
+    "imageUrl": "https://example.com/images/treadmill-run.jpg",
+    "isHazardous": false
+  },
+  {
+    "name": "Велотренажёр",
+    "level": "beginner",
+    "type": "cardio",
+    "imageUrl": "https://example.com/images/indoor-cycling.jpg",
+    "isHazardous": false
+  },
+  {
+    "name": "Гребной тренажёр",
+    "level": "intermediate",
+    "type": "cardio",
+    "imageUrl": "https://example.com/images/rowing.jpg",
+    "isHazardous": false
+  },
+  {
+    "name": "Мобилизация тазобедренных суставов",
+    "level": "beginner",
+    "type": "mobility",
+    "imageUrl": "https://example.com/images/hip-mobility.jpg",
+    "isHazardous": false
+  },
+  {
+    "name": "Мобилизация грудного отдела",
+    "level": "beginner",
+    "type": "mobility",
+    "imageUrl": "https://example.com/images/t-spine-mobility.jpg",
+    "isHazardous": false
+  },
+  {
+    "name": "Мобилизация голеностопа",
+    "level": "beginner",
+    "type": "mobility",
+    "imageUrl": "https://example.com/images/ankle-mobility.jpg",
+    "isHazardous": false
+  }
+]

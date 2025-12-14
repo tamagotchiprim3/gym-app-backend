@@ -23,7 +23,12 @@ describe('UsersService', () => {
     it('throws when exerciseIds is empty', async () => {
       await expect(
         service.createWithExerciseIds(
-          { email: 'a@b.com', name: 'A', passwordHash: 'hash' },
+          {
+            email: 'a@b.com',
+            firstName: 'A',
+            lastName: 'B',
+            passwordHash: 'hash',
+          },
           [],
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
@@ -33,4 +38,3 @@ describe('UsersService', () => {
     });
   });
 });
-

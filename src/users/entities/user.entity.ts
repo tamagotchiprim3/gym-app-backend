@@ -9,11 +9,9 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Exercise } from '../../exercises/entities/exercise.entity';
-
-export enum UserRole {
-  User = 'user',
-  Admin = 'admin',
-}
+import { UserRole } from '../types/user-role';
+import { Weekday } from '../types/weekday';
+import { GymExperienceLevel } from '../types/gym-experience-level';
 
 @Entity()
 export class User {
@@ -27,11 +25,38 @@ export class User {
   @Column()
   passwordHash: string;
 
-  @Column({ nullable: true })
-  name?: string;
+  @Column()
+  firstName: string;
+
+  @Column()
+  lastName: string;
 
   @Column({ type: 'enum', enum: UserRole, default: UserRole.User })
   role: UserRole;
+
+  @Column({ type: 'int' })
+  age: number;
+
+  @Column({ type: 'int' })
+  heightCm: number;
+
+  @Column({ type: 'float' })
+  weightKg: number;
+
+  @Column({ type: 'enum', enum: GymExperienceLevel })
+  gymExperienceLevel: GymExperienceLevel;
+
+  @Column({ type: 'int' })
+  repRangeMin: number;
+
+  @Column({ type: 'int' })
+  repRangeMax: number;
+
+  @Column({ type: 'int', name: 'workingSetsPerGroupPerWeek' })
+  setsPerWeek: number;
+
+  @Column({ type: 'simple-array' })
+  trainingDays: Weekday[];
 
   @ManyToMany(() => Exercise, { cascade: false })
   @JoinTable({

@@ -1,0 +1,21 @@
+id,name,level,type,imageUrl,isHazardous
+1,"Приседания со штангой на спине",beginner,strength,https://example.com/images/back-squat.jpg,false
+2,"Жим штанги лёжа",beginner,strength,https://example.com/images/bench-press.jpg,false
+3,"Становая тяга классическая",intermediate,strength,https://example.com/images/deadlift.jpg,true
+4,"Жим штанги стоя (армейский жим)",beginner,strength,https://example.com/images/overhead-press.jpg,false
+5,"Подтягивания",intermediate,strength,https://example.com/images/pull-up.jpg,false
+6,"Тяга штанги в наклоне",intermediate,strength,https://example.com/images/barbell-row.jpg,false
+7,"Тяга верхнего блока к груди",beginner,strength,https://example.com/images/lat-pulldown.jpg,false
+8,"Жим гантелей на наклонной скамье",beginner,strength,https://example.com/images/incline-db-press.jpg,false
+9,"Разгибания рук на блоке (трицепс)",beginner,strength,https://example.com/images/triceps-pushdown.jpg,false
+10,"Сгибания рук со штангой (бицепс)",beginner,strength,https://example.com/images/barbell-curl.jpg,false
+11,"Жим ногами в тренажёре",beginner,strength,https://example.com/images/leg-press.jpg,false
+12,"Румынская тяга",intermediate,strength,https://example.com/images/rdl.jpg,true
+13,"Разгибания ног в тренажёре",beginner,strength,https://example.com/images/leg-extension.jpg,false
+14,"Сгибания ног в тренажёре",beginner,strength,https://example.com/images/leg-curl.jpg,false
+15,"Бег на беговой дорожке",beginner,cardio,https://example.com/images/treadmill-run.jpg,false
+16,"Велотренажёр",beginner,cardio,https://example.com/images/indoor-cycling.jpg,false
+17,"Гребной тренажёр",intermediate,cardio,https://example.com/images/rowing.jpg,false
+18,"Мобилизация тазобедренных суставов",beginner,mobility,https://example.com/images/hip-mobility.jpg,false
+19,"Мобилизация грудного отдела",beginner,mobility,https://example.com/images/t-spine-mobility.jpg,false
+20,"Мобилизация голеностопа",beginner,mobility,https://example.com/images/ankle-mobility.jpg,false
