@@ -20,6 +20,9 @@ export class Exercise {
   @Column({ type: 'enum', enum: MuscleGroup, default: MuscleGroup.Other })
   muscleGroup: MuscleGroup;
 
+  @Column({ type: 'float', default: 2.5 })
+  weightStepKg: number;
+
   @Column()
   imageUrl: string;
 

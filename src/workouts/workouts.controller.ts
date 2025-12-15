@@ -46,7 +46,13 @@ export class WorkoutsController {
   }
 
   @Post(':sessionId/finish')
-  finish(@Req() req: any, @Param('sessionId', ParseIntPipe) sessionId: number) {
-    return this.workoutsService.finish(req.user, sessionId);
+  finish(
+    @Req() req: any,
+    @Param('sessionId', ParseIntPipe) sessionId: number,
+    @Body() payload?: { force?: boolean },
+  ) {
+    return this.workoutsService.finish(req.user, sessionId, {
+      force: Boolean(payload?.force),
+    });
   }
 }

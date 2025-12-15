@@ -14,8 +14,11 @@ import { UserWorkingWeight } from './entities/user-working-weight.entity';
 import { UserScheduleState } from './entities/user-schedule-state.entity';
 import {
   computeNextWorkoutAt,
+  computeNextWorkingTarget,
   computeSetsForWorkoutIndex,
+  computeWorkoutDateForStart,
   distributeInteger,
+  getLocalIsoDate,
   getWeekStartIsoDateMonday,
 } from './workouts.utils';
 import { WorkoutKind } from './types/workout-kind';
@@ -45,10 +48,10 @@ export class WorkoutsService {
       throw new BadRequestException('User has no exercises');
     }
 
-    const weights = await this.workingWeightsRepository.find({
-      where: { user: { id: user.id } },
-      relations: { exercise: true },
-    });
+      const weights = await this.workingWeightsRepository.find({
+        where: { user: { id: user.id } },
+        relations: { exercise: true },
+      });
     const weightByExerciseId = new Map(weights.map((w) => [w.exercise.id, w]));
 
     const missing = user.exercises.filter((e) => !weightByExerciseId.has(e.id));
@@ -136,6 +139,17 @@ export class WorkoutsService {
     } else if (schedule.weekStartDate !== weekStartDate) {
       schedule.weekStartDate = weekStartDate;
       schedule.workoutsCompletedThisWeek = 0;
+    }
+
+    if (!schedule.nextWorkoutAt) {
+      schedule.nextWorkoutAt = computeWorkoutDateForStart(now, user.trainingDays);
+    }
+    if (schedule.nextWorkoutAt) {
+      const today = getLocalIsoDate(now);
+      const scheduled = getLocalIsoDate(new Date(schedule.nextWorkoutAt));
+      if (today !== scheduled) {
+        throw new BadRequestException(`Next workout is scheduled for ${scheduled}`);
+      }
     }
 
     const workoutIndex =
@@ -343,6 +357,7 @@ export class WorkoutsService {
             exercise: { id: exerciseId } as any,
             workingWeightKg: weightKg,
             repsDone,
+            targetReps: repsDone,
           }),
         );
       }
@@ -359,7 +374,11 @@ export class WorkoutsService {
     };
   }
 
-  async finish(currentUser: User, sessionId: number) {
+  async finish(
+    currentUser: User,
+    sessionId: number,
+    options?: { force?: boolean },
+  ) {
     const user = await this.usersService.findById(currentUser.id);
     if (!user) throw new NotFoundException('User not found');
 
@@ -392,6 +411,22 @@ export class WorkoutsService {
     }
 
     if (session.kind === WorkoutKind.Regular) {
+      const workingSetsCount = await this.setsRepository.count({
+        where: {
+          session: { id: session.id },
+          user: { id: user.id },
+          setType: WorkoutSetType.Working,
+        } as any,
+      });
+
+      const plannedTotal = session.plannedWorkingSetsTotal ?? 0;
+      const isComplete =
+        plannedTotal > 0 ? workingSetsCount >= plannedTotal : workingSetsCount > 0;
+
+      session.completedWorkingSets = workingSetsCount;
+      session.isComplete = isComplete;
+      session.isForceFinished = Boolean(options?.force);
+
       const now = new Date();
       const weekStartDate = getWeekStartIsoDateMonday(now);
       let schedule = await this.scheduleRepository.findOne({
@@ -408,8 +443,65 @@ export class WorkoutsService {
         schedule.weekStartDate = weekStartDate;
         schedule.workoutsCompletedThisWeek = 0;
       }
+      const sessionSets = await this.setsRepository.find({
+        where: {
+          session: { id: session.id },
+          user: { id: user.id },
+          setType: WorkoutSetType.Working,
+        } as any,
+        relations: { exercise: true },
+      });
+      const bestRepsByExerciseId = new Map<number, number>();
+      for (const s of sessionSets) {
+        const id = s.exercise.id;
+        const best = bestRepsByExerciseId.get(id);
+        if (best === undefined || s.repsDone > best) {
+          bestRepsByExerciseId.set(id, s.repsDone);
+        }
+      }
+
+      const plannedExerciseIds = session.plannedExerciseIds ?? [];
+      if (plannedExerciseIds.length) {
+        const weights = await this.workingWeightsRepository.find({
+          where: {
+            user: { id: user.id },
+          },
+          relations: { exercise: true },
+        });
+        const byExerciseId = new Map(weights.map((w) => [w.exercise.id, w]));
+
+        for (const exerciseId of plannedExerciseIds) {
+          const bestRepsDone = bestRepsByExerciseId.get(exerciseId);
+          if (bestRepsDone === undefined) continue;
+
+          const ww = byExerciseId.get(exerciseId);
+          if (!ww) continue;
+
+          const currentTargetReps = Number.isInteger(ww.targetReps)
+            ? ww.targetReps
+            : user.repRangeMin;
+
+          const { nextTargetReps, nextWorkingWeightKg } = computeNextWorkingTarget(
+            {
+              repRangeMin: user.repRangeMin,
+              repRangeMax: user.repRangeMax,
+              currentTargetReps,
+              bestRepsDone,
+              currentWorkingWeightKg: ww.workingWeightKg,
+              weightStepKg: ww.exercise.weightStepKg ?? 2.5,
+            },
+          );
+
+          ww.targetReps = nextTargetReps;
+          ww.workingWeightKg = nextWorkingWeightKg;
+          ww.repsDone = bestRepsDone;
+          await this.workingWeightsRepository.save(ww);
+        }
+      }
+
       schedule.workoutsCompletedThisWeek += 1;
       schedule.nextWorkoutAt = computeNextWorkoutAt(now, user.trainingDays);
+
       const rotation = schedule.groupRotation ?? {};
       const plannedGroups = session.plannedMuscleGroups ?? [];
       const exercisesPerGroupPerWorkout = user.exercisesPerGroupPerWorkout ?? 1;
@@ -441,6 +533,10 @@ export class WorkoutsService {
       sessionId: session.id,
       status: session.status,
       finishedAt: session.finishedAt,
+      isComplete: session.isComplete,
+      isForceFinished: session.isForceFinished,
+      completedWorkingSets: session.completedWorkingSets,
+      plannedWorkingSetsTotal: session.plannedWorkingSetsTotal ?? 0,
     };
   }
 }

@@ -27,7 +27,9 @@ export class UserWorkingWeight {
   @Column({ type: 'int' })
   repsDone: number;
 
+  @Column({ type: 'int' })
+  targetReps: number;
+
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }
-

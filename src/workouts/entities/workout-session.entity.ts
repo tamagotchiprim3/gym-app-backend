@@ -41,6 +41,15 @@ export class WorkoutSession {
   @Column({ type: 'int', nullable: true })
   plannedWorkingSetsTotal?: number;
 
+  @Column({ type: 'int', default: 0 })
+  completedWorkingSets: number;
+
+  @Column({ type: 'boolean', default: false })
+  isComplete: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  isForceFinished: boolean;
+
   @Column({ type: 'json', nullable: true })
   plannedExerciseIds?: number[];
 

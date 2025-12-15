@@ -22,6 +22,7 @@ export class ExercisesController {
       level: payload.level,
       type: payload.type,
       muscleGroup: payload.muscleGroup ?? MuscleGroup.Other,
+      weightStepKg: payload.weightStepKg ?? 2.5,
       imageUrl: payload.imageUrl,
       isHazardous: payload.isHazardous,
     });
