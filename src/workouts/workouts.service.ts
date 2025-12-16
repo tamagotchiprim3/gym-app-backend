@@ -113,7 +113,7 @@ export class WorkoutsService {
     };
   }
 
-  async startRegular(currentUser: User) {
+  async startRegular(currentUser: User, options?: { force?: boolean }) {
     const user = await this.usersService.findById(currentUser.id);
     if (!user) throw new NotFoundException('User not found');
     if (!user.exercises?.length) {
@@ -144,7 +144,7 @@ export class WorkoutsService {
     if (!schedule.nextWorkoutAt) {
       schedule.nextWorkoutAt = computeWorkoutDateForStart(now, user.trainingDays);
     }
-    if (schedule.nextWorkoutAt) {
+    if (schedule.nextWorkoutAt && !options?.force) {
       const today = getLocalIsoDate(now);
       const scheduled = getLocalIsoDate(new Date(schedule.nextWorkoutAt));
       if (today !== scheduled) {

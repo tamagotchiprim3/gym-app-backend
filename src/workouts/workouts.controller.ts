@@ -23,8 +23,10 @@ export class WorkoutsController {
   }
 
   @Post('regular/start')
-  startRegular(@Req() req: any) {
-    return this.workoutsService.startRegular(req.user);
+  startRegular(@Req() req: any, @Body() payload?: { force?: boolean }) {
+    return this.workoutsService.startRegular(req.user, {
+      force: Boolean(payload?.force),
+    });
   }
 
   @Post(':sessionId/sets')
