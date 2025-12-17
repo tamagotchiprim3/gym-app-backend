@@ -56,6 +56,9 @@ export class WorkoutSession {
   @Column({ type: 'simple-array', nullable: true })
   plannedMuscleGroups?: MuscleGroup[];
 
+  @Column({ type: 'json', nullable: true })
+  plannedWorkingSetsByExerciseId?: Record<number, number>;
+
   @Column({ type: 'timestamptz', nullable: true })
   finishedAt?: Date;
 

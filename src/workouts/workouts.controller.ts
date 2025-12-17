@@ -18,8 +18,10 @@ export class WorkoutsController {
   constructor(private readonly workoutsService: WorkoutsService) {}
 
   @Post('init/start')
-  startInit(@Req() req: any) {
-    return this.workoutsService.startInit(req.user);
+  startInit(@Req() req: any, @Body() payload?: { force?: boolean }) {
+    return this.workoutsService.startInit(req.user, {
+      force: Boolean(payload?.force),
+    });
   }
 
   @Post('regular/start')
