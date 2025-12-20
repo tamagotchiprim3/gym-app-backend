@@ -205,6 +205,7 @@ export class WorkoutsService {
         muscleGroup: e.muscleGroup ?? MuscleGroup.Other,
         hasWorkingWeight: weightByExerciseId.has(e.id),
         workingWeightKg: weightByExerciseId.get(e.id)?.workingWeightKg ?? null,
+        targetReps: weightByExerciseId.get(e.id)?.targetReps ?? null,
         plannedWorkingSets: plannedWorkingSetsByExerciseId.get(e.id) ?? 0,
       })),
       totalExercises: plannedExerciseIds.length,
@@ -363,6 +364,8 @@ export class WorkoutsService {
       exercises: plannedExercises.map((e) => ({
         ...e,
         workingWeightKg: weightByExerciseId.get(e.id)?.workingWeightKg ?? null,
+        targetReps:
+          weightByExerciseId.get(e.id)?.targetReps ?? user.repRangeMin,
       })),
       schedule: {
         weekStartDate: schedule.weekStartDate,
