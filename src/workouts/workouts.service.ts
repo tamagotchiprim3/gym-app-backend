@@ -203,6 +203,7 @@ export class WorkoutsService {
         id: e.id,
         name: e.name,
         muscleGroup: e.muscleGroup ?? MuscleGroup.Other,
+        exerciseGif: e.exerciseGif ?? null,
         hasWorkingWeight: weightByExerciseId.has(e.id),
         workingWeightKg: weightByExerciseId.get(e.id)?.workingWeightKg ?? null,
         targetReps: weightByExerciseId.get(e.id)?.targetReps ?? null,
@@ -295,6 +296,7 @@ export class WorkoutsService {
       name: string;
       muscleGroup: MuscleGroup;
       plannedWorkingSets: number;
+      exerciseGif: string | null;
     }> = [];
     const plannedExerciseIds: number[] = [];
 
@@ -318,6 +320,7 @@ export class WorkoutsService {
           name: ex.name,
           muscleGroup,
           plannedWorkingSets: perExerciseSets[i],
+          exerciseGif: ex.exerciseGif ?? null,
         });
         plannedExerciseIds.push(ex.id);
       });
@@ -362,7 +365,11 @@ export class WorkoutsService {
       repRangeMin: user.repRangeMin,
       repRangeMax: user.repRangeMax,
       exercises: plannedExercises.map((e) => ({
-        ...e,
+        id: e.id,
+        name: e.name,
+        muscleGroup: e.muscleGroup,
+        plannedWorkingSets: e.plannedWorkingSets,
+        exerciseGif: e.exerciseGif ?? null,
         workingWeightKg: weightByExerciseId.get(e.id)?.workingWeightKg ?? null,
         targetReps:
           weightByExerciseId.get(e.id)?.targetReps ?? user.repRangeMin,

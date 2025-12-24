@@ -49,4 +49,5 @@ export class AuthController {
     const { passwordHash, ...rest } = req.user;
     return rest;
   }
+
 }

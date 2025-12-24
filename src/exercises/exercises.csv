@@ -1,4 +1,4 @@
-id,name,level,type,muscleGroup,weightStepKg,imageUrl,isHazardous
+id,name,level,type,muscleGroup,weightStepKg,exerciseGif,isHazardous
 1,"Приседания со штангой на спине",beginner,strength,legs,2.5,https://example.com/images/back-squat.jpg,false
 2,"Жим штанги лёжа",beginner,strength,chest,2.5,https://example.com/images/bench-press.jpg,false
 4,"Жим штанги стоя (армейский жим)",beginner,strength,shoulders,2.5,https://example.com/images/overhead-press.jpg,false

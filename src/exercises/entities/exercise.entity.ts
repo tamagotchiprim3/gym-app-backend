@@ -23,8 +23,8 @@ export class Exercise {
   @Column({ type: 'float', default: 2.5 })
   weightStepKg: number;
 
-  @Column()
-  imageUrl: string;
+  @Column({ nullable: true })
+  exerciseGif?: string;
 
   @Column({ default: false })
   isHazardous: boolean;

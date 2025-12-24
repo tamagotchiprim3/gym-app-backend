@@ -23,7 +23,7 @@ export class ExercisesController {
       type: payload.type,
       muscleGroup: payload.muscleGroup ?? MuscleGroup.Other,
       weightStepKg: payload.weightStepKg ?? 2.5,
-      imageUrl: payload.imageUrl,
+      exerciseGif: payload.exerciseGif,
       isHazardous: payload.isHazardous,
     });
   }
